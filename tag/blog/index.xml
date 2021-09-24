@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Posts | Xinru Shan</title>
-    <link>https://libchan.github.io/post/</link>
-      <atom:link href="https://libchan.github.io/post/index.xml" rel="self" type="application/rss+xml" />
-    <description>Posts</description>
+    <title>blog | Xinru Shan</title>
+    <link>https://libchan.github.io/tag/blog/</link>
+      <atom:link href="https://libchan.github.io/tag/blog/index.xml" rel="self" type="application/rss+xml" />
+    <description>blog</description>
     <generator>Wowchemy (https://wowchemy.com)</generator><language>en-us</language>
     <image>
       <url>https://libchan.github.io/media/icon_hu382c0a7e3248622612fad0ba88bb27e1_8687_512x512_fill_lanczos_center_3.png</url>
-      <title>Posts</title>
-      <link>https://libchan.github.io/post/</link>
+      <title>blog</title>
+      <link>https://libchan.github.io/tag/blog/</link>
     </image>
     
     <item>
