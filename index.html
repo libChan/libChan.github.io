@@ -1213,6 +1213,107 @@
   <div class="media-body">
 
     <div class="section-subheading article-title mb-0 mt-0">
+      <a href="/post/ddia_data_copy/" >Ddia_data_copy</a>
+    </div>
+
+    
+    <a href="/post/ddia_data_copy/"  class="summary-link">
+      <div class="article-style">
+        数据复制 数据复制的目的 高可用：一个节点挂掉时，整个系统还有其他节点可以工作。 低延迟：使数据在地理位置上更靠近用户，降低网络延迟。 高吞吐：多个节点可访问，提高系统整体吞吐量。 主从复制 主从复制指，系统有一个主节点，多个从节点，写请求只发送给主节点，主写入本地后，发送日志给从节点，从节点进行更新。主节点和从节点都可以接收读请求。 主从复制需要考虑的问题：
+调节同步和异步复制的节点比例，这会影响系统的吞吐，延迟，数据更新比例等。 从节点新增/恢复。从本地或向主节点请求某时刻的日志snapshot，执行后继续从主节点同步后续日志。 主节点挂掉：确认主节点挂掉的条件，leader选举，重新配置主节点。 日志复制：
+基于语句：将主节点执行的语句发送到从节点。 基于预写日志（WAL）：对于追加写到日志的，可以将日志发送给从节点。缺点：日志描述的数据非常底层。（不理解） 基于行的逻辑日志：将复制和存储方式分离。复制日志是一种逻辑日志，并不真正实现存储。MySQL的二进制binlog是采用这种方式。 复制滞后可能出现的问题 读自己的写不一致：
+对于客户端有权限修改的内容，读主节点，否则读从节点。但对于大家都有权限修改的内容，就失效了。 客户端记录写的时间，读的时间小于1min，读主节点，否则读从节点。这对阈值的设置要求比较高。 客户端维护最近写的时间戳，附带在读请求。当节点包含该时间戳的更新，才返回结果。但理论上不同节点的时间无法完全一致。 单调读：
+当前一次读的内容新于后一次读，比如第一次看到数据，再刷新数据消失。可能是由于第一次读的节点数据更新了，第二次读的节点数据未更新。
+单调读一致性是指，用户多次读取，不会看到版本回滚的现象。
+实现单调读的方法：确保用户每次都读一个节点，可以对用户id进行hash，路由到节点。
+前缀一致读： 对于一系列按照顺序发生的写请求，读取时也需要按照写入顺序读取。
+多主复制 每个主节点都可以接受写请求，同时是其他主节点的从节点。多主节点的结构适用于多数据中心的场景。多数据中心一般在不同region，为了靠近用户。但如果只有一个主节点，在一个数据中心，则失去了按region分配的意义。
+数据中心内主从模型，所有数据中心构成多主模型。
+多主复制的优势：
+      </div>
+    </a>
+    
+
+    <div class="stream-meta article-metadata">
+
+      
+
+      
+        
+
+
+<div class="article-metadata">
+
+  
+  
+
+  
+  <span class="article-date">
+    
+    
+      
+    
+    Jul 23, 2023
+  </span>
+  
+
+  
+
+  
+  <span class="middot-divider"></span>
+  <span class="article-reading-time">
+    1 min read
+  </span>
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+  
+
+</div>
+
+      
+    </div>
+
+    
+
+  </div>
+  <div class="ml-3">
+    
+    
+  </div>
+</div>
+
+    
+  
+    
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<div class="media stream-item">
+  <div class="media-body">
+
+    <div class="section-subheading article-title mb-0 mt-0">
       <a href="/post/getting-started/" >Welcome to Wowchemy, the website builder for Hugo</a>
     </div>
 

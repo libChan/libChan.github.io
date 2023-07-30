@@ -1,0 +1,1158 @@
+<!DOCTYPE html><html lang="en-us" >
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  
+  
+  
+    <meta name="generator" content="Wowchemy 5.3.0 for Hugo" />
+  
+
+  
+
+  
+  
+  
+  
+  
+    
+    
+    
+  
+  
+
+  <meta name="author" content="Xinru Shan" />
+
+  
+  
+  
+    
+  
+  <meta name="description" content="数据复制 数据复制的目的 高可用：一个节点挂掉时，整个系统还有其他节点可以工作。 低延迟：使数据在地理位置上更靠近用户，降低网络延迟。 高吞吐：多个节点可访问，提高系统整体吞吐量。 主从复制 主从复制指，系统有一个主节点，多个从节点，写请求只发送给主节点，主写入本地后，发送日志给从节点，从节点进行更新。主节点和从节点都可以接收读请求。 主从复制需要考虑的问题：
+调节同步和异步复制的节点比例，这会影响系统的吞吐，延迟，数据更新比例等。 从节点新增/恢复。从本地或向主节点请求某时刻的日志snapshot，执行后继续从主节点同步后续日志。 主节点挂掉：确认主节点挂掉的条件，leader选举，重新配置主节点。 日志复制：
+基于语句：将主节点执行的语句发送到从节点。 基于预写日志（WAL）：对于追加写到日志的，可以将日志发送给从节点。缺点：日志描述的数据非常底层。（不理解） 基于行的逻辑日志：将复制和存储方式分离。复制日志是一种逻辑日志，并不真正实现存储。MySQL的二进制binlog是采用这种方式。 复制滞后可能出现的问题 读自己的写不一致：
+对于客户端有权限修改的内容，读主节点，否则读从节点。但对于大家都有权限修改的内容，就失效了。 客户端记录写的时间，读的时间小于1min，读主节点，否则读从节点。这对阈值的设置要求比较高。 客户端维护最近写的时间戳，附带在读请求。当节点包含该时间戳的更新，才返回结果。但理论上不同节点的时间无法完全一致。 单调读：
+当前一次读的内容新于后一次读，比如第一次看到数据，再刷新数据消失。可能是由于第一次读的节点数据更新了，第二次读的节点数据未更新。
+单调读一致性是指，用户多次读取，不会看到版本回滚的现象。
+实现单调读的方法：确保用户每次都读一个节点，可以对用户id进行hash，路由到节点。
+前缀一致读： 对于一系列按照顺序发生的写请求，读取时也需要按照写入顺序读取。
+多主复制 每个主节点都可以接受写请求，同时是其他主节点的从节点。多主节点的结构适用于多数据中心的场景。多数据中心一般在不同region，为了靠近用户。但如果只有一个主节点，在一个数据中心，则失去了按region分配的意义。
+数据中心内主从模型，所有数据中心构成多主模型。
+多主复制的优势：" />
+
+  
+  <link rel="alternate" hreflang="en-us" href="https://libchan.github.io/post/ddia_data_copy/" />
+
+  
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+  
+  
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  
+
+  
+  
+  
+    <meta name="theme-color" content="#1565c0" />
+  
+
+  
+  
+
+  
+
+  <link rel="stylesheet" href="/css/vendor-bundle.min.f1ecf783c14edc00c9320c205831ad8e.css" media="print" onload="this.media='all'">
+
+  
+  
+  
+    
+    
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/academicons/1.9.0/css/academicons.min.css" integrity="sha512-W4yqoT1+8NLkinBLBZko+dFB2ZbHsYLDdr50VElllRcNt2Q4/GSs6u71UHKxB7S6JEMCp5Ve4xjh3eGQl/HRvg==" crossorigin="anonymous" media="print" onload="this.media='all'">
+    
+
+    
+    
+    
+    
+      
+      
+    
+    
+    
+
+    
+    
+    
+      
+    
+    
+      
+      
+        
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.2.0/styles/github.min.css" crossorigin="anonymous" title="hl-light" media="print" onload="this.media='all'">
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.2.0/styles/dracula.min.css" crossorigin="anonymous" title="hl-dark" media="print" onload="this.media='all'" disabled>
+        
+      
+    
+
+    
+    
+    
+
+    
+
+    
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+        
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+      
+      
+
+      
+      
+
+      
+    
+  
+
+  
+  
+  
+    
+      
+      <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Roboto+Mono&family=Roboto:wght@400;700&display=swap">
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Roboto+Mono&family=Roboto:wght@400;700&display=swap" media="print" onload="this.media='all'">
+    
+  
+
+  
+  
+  
+  
+  
+  <link rel="stylesheet" href="/css/wowchemy.481af39c39ffd87b2d14f39943e7c723.css" />
+
+  
+
+
+
+  
+
+  
+
+  
+
+
+
+
+  
+  
+  
+
+  
+
+  
+    <link rel="manifest" href="/manifest.webmanifest" />
+  
+
+  <link rel="icon" type="image/png" href="/media/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_32x32_fill_lanczos_center_3.png" />
+  <link rel="apple-touch-icon" type="image/png" href="/media/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_180x180_fill_lanczos_center_3.png" />
+
+  <link rel="canonical" href="https://libchan.github.io/post/ddia_data_copy/" />
+
+  
+  
+  
+  
+  
+  
+  
+  
+    
+    
+  
+  
+  <meta property="twitter:card" content="summary" />
+  
+  <meta property="og:site_name" content="Xinru Shan" />
+  <meta property="og:url" content="https://libchan.github.io/post/ddia_data_copy/" />
+  <meta property="og:title" content="Ddia_data_copy | Xinru Shan" />
+  <meta property="og:description" content="数据复制 数据复制的目的 高可用：一个节点挂掉时，整个系统还有其他节点可以工作。 低延迟：使数据在地理位置上更靠近用户，降低网络延迟。 高吞吐：多个节点可访问，提高系统整体吞吐量。 主从复制 主从复制指，系统有一个主节点，多个从节点，写请求只发送给主节点，主写入本地后，发送日志给从节点，从节点进行更新。主节点和从节点都可以接收读请求。 主从复制需要考虑的问题：
+调节同步和异步复制的节点比例，这会影响系统的吞吐，延迟，数据更新比例等。 从节点新增/恢复。从本地或向主节点请求某时刻的日志snapshot，执行后继续从主节点同步后续日志。 主节点挂掉：确认主节点挂掉的条件，leader选举，重新配置主节点。 日志复制：
+基于语句：将主节点执行的语句发送到从节点。 基于预写日志（WAL）：对于追加写到日志的，可以将日志发送给从节点。缺点：日志描述的数据非常底层。（不理解） 基于行的逻辑日志：将复制和存储方式分离。复制日志是一种逻辑日志，并不真正实现存储。MySQL的二进制binlog是采用这种方式。 复制滞后可能出现的问题 读自己的写不一致：
+对于客户端有权限修改的内容，读主节点，否则读从节点。但对于大家都有权限修改的内容，就失效了。 客户端记录写的时间，读的时间小于1min，读主节点，否则读从节点。这对阈值的设置要求比较高。 客户端维护最近写的时间戳，附带在读请求。当节点包含该时间戳的更新，才返回结果。但理论上不同节点的时间无法完全一致。 单调读：
+当前一次读的内容新于后一次读，比如第一次看到数据，再刷新数据消失。可能是由于第一次读的节点数据更新了，第二次读的节点数据未更新。
+单调读一致性是指，用户多次读取，不会看到版本回滚的现象。
+实现单调读的方法：确保用户每次都读一个节点，可以对用户id进行hash，路由到节点。
+前缀一致读： 对于一系列按照顺序发生的写请求，读取时也需要按照写入顺序读取。
+多主复制 每个主节点都可以接受写请求，同时是其他主节点的从节点。多主节点的结构适用于多数据中心的场景。多数据中心一般在不同region，为了靠近用户。但如果只有一个主节点，在一个数据中心，则失去了按region分配的意义。
+数据中心内主从模型，所有数据中心构成多主模型。
+多主复制的优势：" /><meta property="og:image" content="https://libchan.github.io/media/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_3.png" />
+    <meta property="twitter:image" content="https://libchan.github.io/media/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_3.png" /><meta property="og:locale" content="en-us" />
+  
+    
+      <meta
+        property="article:published_time"
+        content="2023-07-23T23:09:59&#43;08:00"
+      />
+    
+    <meta property="article:modified_time" content="2023-07-23T23:09:59&#43;08:00">
+  
+
+  
+
+
+    
+
+
+
+
+
+
+  
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://libchan.github.io/post/ddia_data_copy/"
+  },
+  "headline": "Ddia_data_copy",
+  
+  "datePublished": "2023-07-23T23:09:59+08:00",
+  "dateModified": "2023-07-23T23:09:59+08:00",
+  
+  "author": {
+    "@type": "Person",
+    "name": "Xinru Shan"
+  },
+  
+  "publisher": {
+    "@type": "Organization",
+    "name": "Xinru Shan",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://libchan.github.io/media/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_192x192_fill_lanczos_center_3.png"
+    }
+  },
+  "description": "数据复制 数据复制的目的 高可用：一个节点挂掉时，整个系统还有其他节点可以工作。 低延迟：使数据在地理位置上更靠近用户，降低网络延迟。 高吞吐：多个节点可访问，提高系统整体吞吐量。 主从复制 主从复制指，系统有一个主节点，多个从节点，写请求只发送给主节点，主写入本地后，发送日志给从节点，从节点进行更新。主节点和从节点都可以接收读请求。 主从复制需要考虑的问题：\n调节同步和异步复制的节点比例，这会影响系统的吞吐，延迟，数据更新比例等。 从节点新增/恢复。从本地或向主节点请求某时刻的日志snapshot，执行后继续从主节点同步后续日志。 主节点挂掉：确认主节点挂掉的条件，leader选举，重新配置主节点。 日志复制：\n基于语句：将主节点执行的语句发送到从节点。 基于预写日志（WAL）：对于追加写到日志的，可以将日志发送给从节点。缺点：日志描述的数据非常底层。（不理解） 基于行的逻辑日志：将复制和存储方式分离。复制日志是一种逻辑日志，并不真正实现存储。MySQL的二进制binlog是采用这种方式。 复制滞后可能出现的问题 读自己的写不一致：\n对于客户端有权限修改的内容，读主节点，否则读从节点。但对于大家都有权限修改的内容，就失效了。 客户端记录写的时间，读的时间小于1min，读主节点，否则读从节点。这对阈值的设置要求比较高。 客户端维护最近写的时间戳，附带在读请求。当节点包含该时间戳的更新，才返回结果。但理论上不同节点的时间无法完全一致。 单调读：\n当前一次读的内容新于后一次读，比如第一次看到数据，再刷新数据消失。可能是由于第一次读的节点数据更新了，第二次读的节点数据未更新。\n单调读一致性是指，用户多次读取，不会看到版本回滚的现象。\n实现单调读的方法：确保用户每次都读一个节点，可以对用户id进行hash，路由到节点。\n前缀一致读： 对于一系列按照顺序发生的写请求，读取时也需要按照写入顺序读取。\n多主复制 每个主节点都可以接受写请求，同时是其他主节点的从节点。多主节点的结构适用于多数据中心的场景。多数据中心一般在不同region，为了靠近用户。但如果只有一个主节点，在一个数据中心，则失去了按region分配的意义。\n数据中心内主从模型，所有数据中心构成多主模型。\n多主复制的优势："
+}
+</script>
+
+  
+
+  
+
+  
+
+  
+
+
+
+
+
+  <title>Ddia_data_copy | Xinru Shan</title>
+</head>
+
+
+<body id="top" data-spy="scroll" data-offset="70" data-target="#TableOfContents" class="page-wrapper   " data-wc-page-id="17ffc6788c1e8a633a23f91af6b43e8f" >
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <script src="/js/wowchemy-init.min.1d309c6b3f55725f8869af2651084961.js"></script>
+
+  
+
+
+<aside class="search-modal" id="search">
+  <div class="container">
+    <section class="search-header">
+
+      <div class="row no-gutters justify-content-between mb-3">
+        <div class="col-6">
+          <h1>Search</h1>
+        </div>
+        <div class="col-6 col-search-close">
+          <a class="js-search" href="#" aria-label="Close"><i class="fas fa-times-circle text-muted" aria-hidden="true"></i></a>
+        </div>
+      </div>
+
+      <div id="search-box">
+        
+        <input name="q" id="search-query" placeholder="Search..." autocapitalize="off"
+        autocomplete="off" autocorrect="off" spellcheck="false" type="search" class="form-control"
+        aria-label="Search...">
+        
+      </div>
+
+      
+      
+
+      
+
+    </section>
+    <section class="section-search-results">
+
+      <div id="search-hits">
+        
+      </div>
+
+    </section>
+  </div>
+</aside>
+
+
+
+  <div class="page-header">
+    
+
+
+
+
+
+
+
+
+
+
+
+
+<nav class="navbar navbar-expand-lg navbar-light compensate-for-scrollbar" id="navbar-main">
+  <div class="container-xl">
+
+    
+    <div class="d-none d-lg-inline-flex">
+      <a class="navbar-brand" href="/">Xinru Shan</a>
+    </div>
+    
+
+    
+    <button type="button" class="navbar-toggler" data-toggle="collapse"
+            data-target="#navbar-content" aria-controls="navbar-content" aria-expanded="false" aria-label="Toggle navigation">
+    <span><i class="fas fa-bars"></i></span>
+    </button>
+    
+
+    
+    <div class="navbar-brand-mobile-wrapper d-inline-flex d-lg-none">
+      <a class="navbar-brand" href="/">Xinru Shan</a>
+    </div>
+    
+
+    
+    
+    <div class="navbar-collapse main-menu-item collapse justify-content-start" id="navbar-content">
+
+      
+      <ul class="navbar-nav d-md-inline-flex">
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+
+        
+        
+        
+        
+
+        
+          
+            
+            
+          
+          
+            
+            
+            
+              
+            
+            
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#about"><span>Home</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+
+        
+        
+        
+        
+
+        
+          
+            
+            
+          
+          
+            
+            
+            
+              
+            
+            
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#posts"><span>Posts</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+
+        
+        
+        
+        
+
+        
+          
+            
+            
+          
+          
+            
+            
+            
+              
+            
+            
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#contact"><span>Contact</span></a>
+        </li>
+
+        
+        
+
+      
+
+        
+      </ul>
+    </div>
+
+    <ul class="nav-icons navbar-nav flex-row ml-auto d-flex pl-md-2">
+
+      
+      
+        
+      
+
+      
+      
+      <li class="nav-item">
+        <a class="nav-link js-search" href="#" aria-label="Search"><i class="fas fa-search" aria-hidden="true"></i></a>
+      </li>
+      
+
+      
+      
+      <li class="nav-item dropdown theme-dropdown">
+        <a href="#" class="nav-link" data-toggle="dropdown" aria-haspopup="true" aria-label="Display preferences">
+          <i class="fas fa-moon" aria-hidden="true"></i>
+        </a>
+        <div class="dropdown-menu">
+          <a href="#" class="dropdown-item js-set-theme-light">
+            <span>Light</span>
+          </a>
+          <a href="#" class="dropdown-item js-set-theme-dark">
+            <span>Dark</span>
+          </a>
+          <a href="#" class="dropdown-item js-set-theme-auto">
+            <span>Automatic</span>
+          </a>
+        </div>
+      </li>
+      
+
+      
+      
+
+    </ul>
+
+  </div>
+</nav>
+
+
+  </div>
+
+  <div class="page-body">
+    <article class="article">
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+  
+  
+<div class="article-container pt-3">
+  <h1>Ddia_data_copy</h1>
+
+  
+
+  
+    
+
+
+<div class="article-metadata">
+
+  
+  
+
+  
+  <span class="article-date">
+    
+    
+      
+    
+    Jul 23, 2023
+  </span>
+  
+
+  
+
+  
+  <span class="middot-divider"></span>
+  <span class="article-reading-time">
+    1 min read
+  </span>
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+  
+
+</div>
+
+    
+
+
+
+
+
+  
+</div>
+
+
+
+  <div class="article-container">
+
+    <div class="article-style">
+      <h1 id="数据复制">数据复制</h1>
+<h2 id="数据复制的目的">数据复制的目的</h2>
+<ul>
+<li>高可用：一个节点挂掉时，整个系统还有其他节点可以工作。</li>
+<li>低延迟：使数据在地理位置上更靠近用户，降低网络延迟。</li>
+<li>高吞吐：多个节点可访问，提高系统整体吞吐量。</li>
+</ul>
+<h2 id="主从复制">主从复制</h2>
+<p>主从复制指，系统有一个主节点，多个从节点，写请求只发送给主节点，主写入本地后，发送日志给从节点，从节点进行更新。主节点和从节点都可以接收读请求。
+主从复制需要考虑的问题：</p>
+<ul>
+<li>调节同步和异步复制的节点比例，这会影响系统的吞吐，延迟，数据更新比例等。</li>
+<li>从节点新增/恢复。从本地或向主节点请求某时刻的日志snapshot，执行后继续从主节点同步后续日志。</li>
+<li>主节点挂掉：确认主节点挂掉的条件，leader选举，重新配置主节点。</li>
+</ul>
+<p>日志复制：</p>
+<ul>
+<li>基于语句：将主节点执行的语句发送到从节点。</li>
+<li>基于预写日志（WAL）：对于追加写到日志的，可以将日志发送给从节点。<em>缺点：日志描述的数据非常底层。（不理解）</em></li>
+<li>基于行的逻辑日志：将复制和存储方式分离。复制日志是一种逻辑日志，并不真正实现存储。MySQL的二进制binlog是采用这种方式。</li>
+</ul>
+<h3 id="复制滞后可能出现的问题">复制滞后可能出现的问题</h3>
+<p><strong>读自己的写不一致：</strong></p>
+<ul>
+<li>对于客户端有权限修改的内容，读主节点，否则读从节点。但对于大家都有权限修改的内容，就失效了。</li>
+<li>客户端记录写的时间，读的时间小于1min，读主节点，否则读从节点。这对阈值的设置要求比较高。</li>
+<li>客户端维护最近写的时间戳，附带在读请求。当节点包含该时间戳的更新，才返回结果。但理论上不同节点的时间无法完全一致。</li>
+</ul>
+<p><strong>单调读：</strong></p>
+<p>当前一次读的内容新于后一次读，比如第一次看到数据，再刷新数据消失。可能是由于第一次读的节点数据更新了，第二次读的节点数据未更新。</p>
+<p>单调读一致性是指，用户多次读取，不会看到版本回滚的现象。</p>
+<p>实现单调读的方法：确保用户每次都读一个节点，可以对用户id进行hash，路由到节点。</p>
+<p><strong>前缀一致读：</strong>
+对于一系列按照顺序发生的写请求，读取时也需要按照写入顺序读取。</p>
+<h2 id="多主复制">多主复制</h2>
+<p>每个主节点都可以接受写请求，同时是其他主节点的从节点。多主节点的结构<strong>适用于多数据中心</strong>的场景。多数据中心一般在不同region，为了靠近用户。但如果只有一个主节点，在一个数据中心，则失去了按region分配的意义。</p>
+<p><strong>数据中心内主从模型，所有数据中心构成多主模型。</strong></p>
+<p>多主复制的优势：</p>
+<ul>
+<li>多主提高整个系统的吞吐</li>
+<li>更高容错，一个主节点挂掉，数据中心内再选举一个主节点，不需要垮数据中心选举，不会造成网络负担大。</li>
+<li>多主节点之间采用异步复制，网络失效影响较小。</li>
+</ul>
+<p>多主复制的问题：不同数据中心同时修改相同的数据，需要处理写冲突。解决方案：</p>
+<ul>
+<li>避免冲突：在应用层避免写入冲突。例如用户更新自己的数据，写请求只路由到特定的数据中心。但如果数据中心故障，或者用户去其他位置，则需要解决数据中心之间的冲突。</li>
+<li>收敛到一致状态：比如每个用户提供写入时间戳，按顺序写入。</li>
+</ul>
+<p>自动冲突解决：规则可能变得很复杂，有一些从数据结构和算法层面解决冲突的方案：</p>
+<ul>
+<li>无冲突的复制数据类型（CRDT），可以由多个用户同时编辑，以内置方法解决冲突。</li>
+<li>可合并的持久数据结构：像Git一样跟踪版本，提出<em>三向合并功能</em>。</li>
+<li>操作转换：是Etherpad和Google Docs的冲突解决算法。</li>
+</ul>
+<h2 id="无主复制">无主复制</h2>
+<p>没有主节点，去中心复制，每个节点都可以接受写请求。Amazon内部的Dynamo掀起一阵无主复制的热潮。</p>
+<p>无主节点系统的：</p>
+<ul>
+<li>读修复：client的读同时请求到多个节点，对比version，将version最新的作为结果。</li>
+<li>反熵：background进程扫描节点之间副本的差异，并复制。</li>
+</ul>
+<p>Q: 怎么判断无主系统处理读写请求时，是最新状态？</p>
+<p>假设有n个节点，写入需要w个节点确认，读取需要r个节点确认，则w+r&gt;n，读取的节点中一定包含最新值，w和r有overlap。将w和r成为法定票数写和法定票数读，用于判断读和写是否有效。</p>
+<p>Q: 如果此时系统因为一些原因，例如网络问题，导致无法满足w和r，怎么处理？</p>
+<p>可以采用sloppy quorum，允许w个写入和r个读，但可以不在指定的n个节点。这里应该是集群比较大，n不是全部节点数，有备用节点的情况。等问题修复好，再同步到n个节点。但在sloppy quorum下，即便满足w+r&gt;n，也不保证读到最新值。</p>
+
+    </div>
+
+    
+
+
+
+
+
+
+
+
+<div class="share-box" aria-hidden="true">
+  <ul class="share">
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://twitter.com/intent/tweet?url=https://libchan.github.io/post/ddia_data_copy/&amp;text=Ddia_data_copy" target="_blank" rel="noopener" class="share-btn-twitter">
+          <i class="fab fa-twitter"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://www.facebook.com/sharer.php?u=https://libchan.github.io/post/ddia_data_copy/&amp;t=Ddia_data_copy" target="_blank" rel="noopener" class="share-btn-facebook">
+          <i class="fab fa-facebook"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="mailto:?subject=Ddia_data_copy&amp;body=https://libchan.github.io/post/ddia_data_copy/" target="_blank" rel="noopener" class="share-btn-email">
+          <i class="fas fa-envelope"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://www.linkedin.com/shareArticle?url=https://libchan.github.io/post/ddia_data_copy/&amp;title=Ddia_data_copy" target="_blank" rel="noopener" class="share-btn-linkedin">
+          <i class="fab fa-linkedin-in"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="whatsapp://send?text=Ddia_data_copy%20https://libchan.github.io/post/ddia_data_copy/" target="_blank" rel="noopener" class="share-btn-whatsapp">
+          <i class="fab fa-whatsapp"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://service.weibo.com/share/share.php?url=https://libchan.github.io/post/ddia_data_copy/&amp;title=Ddia_data_copy" target="_blank" rel="noopener" class="share-btn-weibo">
+          <i class="fab fa-weibo"></i>
+        </a>
+      </li>
+    
+  </ul>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+  
+  
+  
+    
+  
+  
+  
+  <div class="media author-card content-widget-hr">
+    
+      
+      <a href="https://libchan.github.io/"><img class="avatar mr-3 avatar-circle" src="/authors/admin/avatar_hua20bea6e52c411e23b0ac09ad9d496a5_72250_270x270_fill_q75_lanczos_center.jpg" alt="Xinru Shan"></a>
+    
+
+    <div class="media-body">
+      <h5 class="card-title"><a href="https://libchan.github.io/">Xinru Shan</a></h5>
+      <h6 class="card-subtitle">Software Engineer</h6>
+      <p class="card-text">I&rsquo;m now a software engineer in Microsoft. My research interests lies in the interaction of System and AI, like database system, ML system and distributed system.</p>
+      <ul class="network-icon" aria-hidden="true">
+  
+    
+    
+    
+      
+    
+    
+    
+    
+    
+    <li>
+      <a href="mailto:libchanz@gmail.com" >
+        <i class="fas fa-envelope"></i>
+      </a>
+    </li>
+  
+    
+    
+    
+      
+    
+    
+    
+    
+    
+      
+    
+    <li>
+      <a href="https://github.com/libChan" target="_blank" rel="noopener">
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  
+</ul>
+
+    </div>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+  </div>
+</article>
+  </div>
+
+  <div class="page-footer">
+    
+    
+    <div class="container">
+      <footer class="site-footer">
+
+  
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+
+
+
+
+
+  <p class="powered-by">
+    
+    
+    
+      
+      
+      
+      
+      
+      
+      Published with <a href="https://wowchemy.com/?utm_campaign=poweredby" target="_blank" rel="noopener">Wowchemy</a> — the free, <a href="https://github.com/wowchemy/wowchemy-hugo-modules" target="_blank" rel="noopener">open source</a> website builder that empowers creators.
+    
+  </p>
+</footer>
+
+    </div>
+    
+  </div>
+
+  
+<div id="modal" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Cite</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <pre><code class="tex hljs"></code></pre>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-outline-primary my-1 js-copy-cite" href="#" target="_blank">
+          <i class="fas fa-copy"></i> Copy
+        </a>
+        <a class="btn btn-outline-primary my-1 js-download-cite" href="#" target="_blank">
+          <i class="fas fa-download"></i> Download
+        </a>
+        <div id="modal-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+      
+
+    
+    <script src="/js/vendor-bundle.min.5a3a4e7cbc7b4e121b2d29312cf8ad59.js"></script>
+
+    
+    
+    
+      
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.imagesloaded/4.1.4/imagesloaded.pkgd.min.js" integrity="sha256-lqvxZrPLtfffUl2G/e7szqSvPBILGbwmsGE1MKlOi0Q=" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.isotope/3.0.6/isotope.pkgd.min.js" integrity="sha256-CBrpuqrMhXwcLLUd5tvQ4euBHCdh7wGlDfNz8vbu/iI=" crossorigin="anonymous"></script>
+      
+
+      
+      
+
+      
+
+      
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.2.0/highlight.min.js" integrity="sha512-TDKKr+IvoqZnPzc3l35hdjpHD0m+b2EC2SrLEgKDRWpxf2rFCxemkgvJ5kfU48ip+Y+m2XVKyOCD85ybtlZDmw==" crossorigin="anonymous"></script>
+        
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.2.0/languages/r.min.js" crossorigin="anonymous"></script>
+        
+      
+
+    
+
+    
+    
+    
+
+    
+    
+
+    
+    
+    
+      
+      <script id="search-hit-fuse-template" type="text/x-template">
+        <div class="search-hit" id="summary-{{key}}">
+          <div class="search-hit-content">
+            <div class="search-hit-name">
+              <a href="{{relpermalink}}">{{title}}</a>
+              <div class="article-metadata search-hit-type">{{type}}</div>
+              <p class="search-hit-description">{{snippet}}</p>
+            </div>
+          </div>
+        </div>
+      </script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/3.2.1/fuse.min.js" integrity="sha256-VzgmKYmhsGNNN4Ph1kMW+BjoYJM2jV5i4IlFoeZA9XI=" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/jquery.mark.min.js" integrity="sha256-4HLtjeVgH0eIB3aZ9mLYF6E8oU5chNdjU6p6rrXpl9U=" crossorigin="anonymous"></script>
+      
+    
+
+    
+    
+
+    
+    
+    
+    
+
+    
+    
+      
+      
+      
+      
+      
+      
+      
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+      
+      
+    
+    
+    <script src="/en/js/wowchemy.min.5bb41a68c539a638856544de9689bd9c.js"></script>
+
+    
+
+
+
+
+
+
+</body>
+</html>
